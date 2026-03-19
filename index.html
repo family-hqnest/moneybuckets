@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F2F2F7">
+<title>MoneyBuckets</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F2F2F7;--card:#fff;--text:#1C1C1E;--text2:#3A3A3C;--text3:#8E8E93;--text4:#AEAEB2;
+  --border:rgba(0,0,0,.04);--divider:#F2F2F7;--inputbg:#F2F2F7;--inputbdr:#E5E5EA;
+  --blue:#3478F6;--green:#34C759;--red:#FF3B30;--orange:#FF6B35;--purple:#AF52DE;--pink:#FF2D55;--yellow:#FFCC00;--indigo:#5856D6;
+  --font:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;--mono:'DM Mono',monospace;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+html,body{height:100%;background:var(--bg);font-family:var(--font);color:var(--text);-webkit-font-smoothing:antialiased}
+input,select,button,textarea{font-family:inherit;font-size:inherit}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+
+.shell{max-width:480px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;position:relative}
+.body{flex:1;padding-bottom:calc(72px + var(--safe-b));overflow-y:auto;-webkit-overflow-scrolling:touch}
+.page{padding:20px 16px 24px}
+
+/* Nav */
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;justify-content:space-around;background:rgba(249,249,249,.92);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-top:1px solid #E5E5EA;padding:6px 0 calc(8px + var(--safe-b));z-index:100}
+.nav button{display:flex;flex-direction:column;align-items:center;background:none;border:none;cursor:pointer;padding:4px 14px;color:var(--text3);transition:color .15s;font-family:var(--font)}
+.nav button.active{color:var(--blue)}
+.nav button svg{width:22px;height:22px}
+.nav button span{font-size:10px;margin-top:2px}
+.nav button.active span{font-weight:600}
+
+/* Cards */
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.row{display:flex;align-items:center;padding:12px 14px;background:var(--card);border-radius:14px;margin-bottom:8px;border:1px solid var(--border);box-shadow:0 1px 2px rgba(0,0,0,.03)}
+
+/* Typo */
+.h1{font-size:28px;font-weight:800;color:var(--text);letter-spacing:-.5px;margin-bottom:4px}
+.sec-lbl{font-size:13px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px}
+.mono{font-family:var(--mono)}
+
+/* Buttons */
+.btn-pri{background:var(--blue);color:#fff;border:none;border-radius:12px;padding:10px 20px;font-weight:700;font-size:14px;cursor:pointer}
+.btn-pri-lg{background:var(--blue);color:#fff;border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:700;cursor:pointer;flex:2}
+.btn-sec-lg{background:var(--inputbg);color:var(--text2);border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:600;cursor:pointer;flex:1}
+.btn-link{background:none;border:none;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;padding:0;font-family:var(--font)}
+.btn-x{background:none;border:none;cursor:pointer;padding:4px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.chip{border:none;border-radius:20px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;background:var(--card);color:var(--text2);box-shadow:0 1px 2px rgba(0,0,0,.06);transition:all .15s}
+.chip.active{background:var(--blue);color:#fff}
+
+/* Icon circles */
+.ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+
+/* Inputs */
+.form-label{font-size:13px;font-weight:600;color:var(--text3);margin-bottom:4px;margin-top:14px;display:block}
+.form-input{width:100%;background:var(--inputbg);border:1px solid var(--inputbdr);border-radius:12px;color:var(--text);font-size:16px;padding:12px 14px;outline:none;-webkit-appearance:none}
+.env-input{width:64px;border:1px solid var(--inputbdr);border-radius:8px;padding:6px 8px;font-size:14px;text-align:right;font-family:var(--mono);color:var(--text);background:#FAFAFA;outline:none}
+
+/* Checkbox */
+.chk{width:26px;height:26px;border-radius:8px;border:2px solid #D1D1D6;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s}
+.chk.done{border-color:var(--green);background:var(--green)}
+
+/* Progress bar */
+.bar{height:6px;border-radius:3px;background:var(--divider);overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s ease}
+
+/* Settings row */
+.sett-row{display:flex;align-items:center;gap:12px;width:100%;background:transparent;border:none;border-bottom:1px solid var(--divider);color:var(--text);font-size:15px;padding:14px 0;cursor:pointer;font-weight:500;font-family:var(--font);text-align:left}
+
+/* Overlay / Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;z-index:200}
+.modal{width:100%;max-width:480px;background:#fff;border-radius:20px 20px 0 0;padding:12px 20px calc(24px + var(--safe-b));max-height:88dvh;overflow-y:auto}
+.modal-handle{width:36px;height:5px;border-radius:3px;background:#D1D1D6;margin:0 auto 16px}
+.modal-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:12px}
+
+/* Toast */
+.toast{position:fixed;top:52px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:10px 24px;border-radius:14px;font-size:14px;font-weight:600;z-index:300;box-shadow:0 4px 20px rgba(0,0,0,.15);animation:fadeUp .25s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* Auth screen */
+.auth-wrap{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+.auth-card{background:#fff;border-radius:20px;padding:32px 24px;width:100%;max-width:380px;box-shadow:0 2px 20px rgba(0,0,0,.06)}
+
+/* Loading spinner */
+.spinner{width:24px;height:24px;border:3px solid #E5E5EA;border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Syncing indicator */
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px;animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+</style>
+</head>
+<body>
+<div id="app" class="shell"></div>
+
+<script>
+// ─── Supabase Init ───
+const SUPA_URL = 'https://snxgrdzpwxpkchepxohz.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNueGdyZHpwd3hwa2NoZXB4b2h6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzQ3ODMsImV4cCI6MjA4OTUxMDc4M30.WzRsTXmlu67JcAjxAIEp44TKLfWM_aDHVlcxVhHP4Bs';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+const CATEGORIES = [
+  { id:'housing', name:'Housing', icon:'🏠', color:'#3478F6' },
+  { id:'transport', name:'Transportation', icon:'🚗', color:'#AF52DE' },
+  { id:'subscriptions', name:'Subscriptions', icon:'📱', color:'#FF2D55' },
+  { id:'debt', name:'Debt Payments', icon:'💳', color:'#FF6B35' },
+  { id:'insurance', name:'Insurance', icon:'🛡️', color:'#FFCC00' },
+  { id:'savings', name:'Savings', icon:'🏦', color:'#34C759' },
+  { id:'personal', name:'Personal', icon:'🎯', color:'#5856D6' },
+];
+
+const INIT_DATA = { income:[], expenses:[], envelopes: CATEGORIES.map(c => ({ categoryId:c.id, budgeted:0 })) };
+
+const uid = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
+const $ = n => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
+const $$ = n => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n);
+const fd = d => new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+const iso = () => new Date().toISOString().slice(0,10);
+function daysUntil(s){ const a=new Date(s+'T12:00:00'),b=new Date(); a.setHours(0,0,0,0); b.setHours(0,0,0,0); return Math.round((a-b)/864e5); }
+function catFor(id){ return CATEGORIES.find(c=>c.id===id) || {id:'other',name:'Other',icon:'📌',color:'#8E8E93'}; }
+
+// ─── State ───
+let state = {
+  auth: null, // null = loading, 'login' = show login, {user} = logged in
+  data: { ...INIT_DATA },
+  tab: 'home',
+  modal: null,
+  toast: null,
+  syncing: false,
+  toastTimer: null,
+};
+
+function setState(patch) {
+  Object.assign(state, typeof patch === 'function' ? patch(state) : patch);
+  render();
+}
+
+function flash(msg) {
+  clearTimeout(state.toastTimer);
+  state.toast = msg;
+  state.toastTimer = setTimeout(() => { state.toast = null; render(); }, 1800);
+  render();
+}
+
+// ─── Supabase Data Sync ───
+let saveTimer = null;
+async function cloudSave() {
+  if (!state.auth?.user) return;
+  state.syncing = true; render();
+  try {
+    const { error } = await sb.from('budget_data').upsert({
+      user_id: state.auth.user.id,
+      data: state.data,
+    }, { onConflict: 'user_id' });
+    if (error) console.error('Save error:', error);
+  } catch(e) { console.error('Save failed:', e); }
+  state.syncing = false; render();
+}
+
+function debouncedSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(cloudSave, 800);
+}
+
+async function cloudLoad() {
+  if (!state.auth?.user) return;
+  try {
+    const { data, error } = await sb.from('budget_data').select('data').eq('user_id', state.auth.user.id).maybeSingle();
+    if (error) { console.error('Load error:', error); return; }
+    if (data?.data) {
+      state.data = { ...INIT_DATA, ...data.data };
+    }
+  } catch(e) { console.error('Load failed:', e); }
+  render();
+}
+
+function updateData(fn) {
+  state.data = fn(state.data);
+  render();
+  debouncedSave();
+}
+
+// ─── Auth ───
+async function checkAuth() {
+  const { data: { session } } = await sb.getSession();
+  if (session?.user) {
+    state.auth = { user: session.user };
+    await cloudLoad();
+  } else {
+    state.auth = 'login';
+  }
+  render();
+}
+
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    state.auth = { user: session.user };
+    await cloudLoad();
+    render();
+  } else if (event === 'SIGNED_OUT') {
+    state.auth = 'login';
+    state.data = { ...INIT_DATA };
+    render();
+  }
+});
+
+// ─── Render Engine ───
+const app = document.getElementById('app');
+
+function h(tag, attrs, ...children) {
+  const el = document.createElement(tag);
+  if (attrs) Object.entries(attrs).forEach(([k,v]) => {
+    if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === 'className') el.className = v;
+    else if (k === 'innerHTML') el.innerHTML = v;
+    else if (k === 'checked') el.checked = v;
+    else if (k === 'value') el.value = v;
+    else if (k === 'disabled') { if(v) el.setAttribute('disabled',''); }
+    else if (k === 'selected') { if(v) el.setAttribute('selected',''); }
+    else if (k === 'type') el.setAttribute('type', v);
+    else if (k === 'placeholder') el.setAttribute('placeholder', v);
+    else if (k === 'inputMode') el.setAttribute('inputmode', v);
+    else if (k === 'autoFocus') setTimeout(()=>el.focus(),50);
+    else el.setAttribute(k, v);
+  });
+  children.flat(Infinity).forEach(c => {
+    if (c == null || c === false) return;
+    el.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(c) : c);
+  });
+  return el;
+}
+
+// SVGs
+const svgX = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="#C7C7CC" stroke-width="2" stroke-linecap="round"/></svg>`;
+const svgChk = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const svgChev = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="#C7C7CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const NAV_ICONS = {
+  home: `<svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M3 12l9-8 9 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 10v9a1 1 0 001 1h3v-5a1 1 0 011-1h4a1 1 0 011 1v5h3a1 1 0 001-1v-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  income: `<svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M12 5v14m0-14l-4 4m4-4l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  bills: `<svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+  budget: `<svg width="22" height="22" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/></svg>`,
+  more: `<svg width="22" height="22" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/></svg>`,
+};
+
+// ─── Compute helpers ───
+function totals() {
+  const inc = state.data.income.reduce((s,i) => s + +i.amount, 0);
+  const exp = state.data.expenses.reduce((s,e) => s + +e.amount, 0);
+  const paid = state.data.expenses.filter(e=>e.paid).reduce((s,e) => s + +e.amount, 0);
+  return { inc, exp, paid, remaining: inc - exp };
+}
+
+function byCategory() {
+  const m = {};
+  state.data.expenses.forEach(e => {
+    const c = catFor(e.categoryId);
+    if (!m[c.id]) m[c.id] = { name:c.name, color:c.color, value:0 };
+    m[c.id].value += +e.amount;
+  });
+  return Object.values(m).filter(c=>c.value>0).sort((a,b)=>b.value-a.value);
+}
+
+// ─── Page Renderers ───
+function renderAuth() {
+  let email = '';
+  let sent = false;
+  let loading = false;
+  let error = '';
+
+  function draw() {
+    app.innerHTML = '';
+    app.appendChild(
+      h('div', {className:'auth-wrap'},
+        h('div', {className:'auth-card'},
+          h('div', {style:{fontSize:'40px',marginBottom:'12px'}}, '💰'),
+          h('h1', {style:{fontSize:'24px',fontWeight:800,marginBottom:'4px'}}, 'MoneyBuckets'),
+          h('p', {style:{color:'#8E8E93',fontSize:'14px',marginBottom:'24px'}}, 'Sign in to sync across devices'),
+          sent
+            ? [
+                h('div', {style:{fontSize:'40px',marginBottom:'12px'}}, '📬'),
+                h('p', {style:{color:'var(--text)',fontSize:'15px',fontWeight:600,marginBottom:'8px'}}, 'Check your email'),
+                h('p', {style:{color:'#8E8E93',fontSize:'13px',lineHeight:'1.5'}}, `We sent a magic link to ${email}. Click it to sign in.`),
+                h('button', {className:'btn-link', style:{marginTop:'16px'}, onClick:()=>{ sent=false; draw(); }}, 'Use a different email'),
+              ]
+            : [
+                h('label', {className:'form-label',style:{textAlign:'left',marginTop:0}}, 'Email'),
+                h('input', {className:'form-input', type:'email', placeholder:'you@example.com', value:email, onInput:(e)=>{email=e.target.value}, autoFocus:true}),
+                error ? h('p', {style:{color:'var(--red)',fontSize:'13px',marginTop:'8px'}}, error) : null,
+                h('button', {
+                  className:'btn-pri-lg',
+                  style:{width:'100%',marginTop:'16px',opacity:loading?.6:1},
+                  disabled:loading,
+                  onClick: async () => {
+                    if (!email.trim() || !email.includes('@')) { error='Enter a valid email'; draw(); return; }
+                    loading = true; error = ''; draw();
+                    const { error: err } = await sb.auth.signInWithOtp({
+                      email: email.trim(),
+                      options: { emailRedirectTo: window.location.origin + window.location.pathname }
+                    });
+                    loading = false;
+                    if (err) { error = err.message; draw(); }
+                    else { sent = true; draw(); }
+                  }
+                }, loading ? 'Sending...' : 'Send Magic Link'),
+              ]
+        )
+      )
+    );
+  }
+  draw();
+}
+
+function renderHome() {
+  const t = totals();
+  const cats = byCategory();
+  const unpaid = state.data.expenses.filter(e=>!e.paid&&e.dueDate).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+
+  return h('div', {className:'page'},
+    // Hero
+    h('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:'20px'}},
+      h('div', null,
+        h('div', {style:{fontSize:'14px',color:'var(--text3)',fontWeight:500}}, 'After Obligations'),
+        h('div', {className:'mono', style:{fontSize:'40px',fontWeight:800,color:t.remaining>=0?'var(--green)':'var(--red)',letterSpacing:'-2px',lineHeight:1.1}}, $(t.remaining)),
+      ),
+      h('div', {style:{textAlign:'right'}},
+        h('div', {style:{fontSize:'12px',color:'var(--green)',fontWeight:600}}, '↑ '+$(t.inc)),
+        h('div', {style:{fontSize:'12px',color:'var(--red)',fontWeight:600}}, '↓ '+$(t.exp)),
+        h('div', {style:{fontSize:'12px',color:'var(--text3)',fontWeight:500}}, $(t.paid)+' paid'),
+        state.syncing ? h('div', {style:{marginTop:'4px'}}, h('span',{className:'sync-dot'}), h('span',{style:{fontSize:'11px',color:'var(--text4)'}}, 'Syncing')) : null,
+      ),
+    ),
+    t.inc > 0 ? h('div', {className:'bar', style:{marginBottom:'24px'}},
+      h('div', {className:'bar-fill', style:{width:Math.min(100,t.exp/t.inc*100)+'%', background:t.exp>t.inc?'var(--red)':'var(--blue)'}})
+    ) : null,
+
+    // Due soon
+    h('div', {className:'card'},
+      h('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}},
+        h('span', {className:'sec-lbl'}, 'Due Soon'),
+        unpaid.length > 0 ? h('button', {className:'btn-link', onClick:copyDue}, 'Copy for OpenClaw') : null,
+      ),
+      unpaid.length === 0
+        ? h('div', {style:{color:'var(--text3)',fontSize:'14px',padding:'4px 0'}}, 'All clear — nothing due')
+        : unpaid.slice(0,5).map(e => {
+          const d = daysUntil(e.dueDate); const c = catFor(e.categoryId);
+          return h('div', {style:{display:'flex',alignItems:'center',padding:'10px 0',borderBottom:'1px solid var(--divider)'}},
+            h('div', {className:'ico', style:{background:c.color+'18'}}, c.icon),
+            h('div', {style:{flex:1,marginLeft:'12px'}},
+              h('div', {style:{fontSize:'15px',fontWeight:600}}, e.name),
+              h('div', {style:{fontSize:'12px',color:d<=2?'var(--red)':'var(--text3)',fontWeight:d<=2?600:400}},
+                d<0?Math.abs(d)+'d overdue':d===0?'Due today':d===1?'Tomorrow':d+' days'),
+            ),
+            h('div', {className:'mono', style:{fontWeight:700,fontSize:'15px'}}, $$(e.amount)),
+          );
+        }),
+    ),
+
+    // Category breakdown
+    cats.length > 0 ? h('div', {className:'card'},
+      h('span', {className:'sec-lbl'}, 'Where It Goes'),
+      h('div', {style:{marginTop:'14px'}},
+        cats.map(c => h('div', {style:{display:'flex',alignItems:'center',gap:'10px',padding:'7px 0'}},
+          h('div', {style:{width:'10px',height:'10px',borderRadius:'3px',background:c.color,flexShrink:0}}),
+          h('div', {style:{flex:1,fontSize:'14px',color:'var(--text2)',fontWeight:500}}, c.name),
+          h('div', {className:'mono', style:{fontWeight:600,fontSize:'14px'}}, $$(c.value)),
+          h('div', {style:{fontSize:'12px',color:'var(--text3)',width:'38px',textAlign:'right'}}, (t.exp?Math.round(c.value/t.exp*100):0)+'%'),
+        ))
+      ),
+      // Inline bar chart
+      h('div', {style:{marginTop:'12px'}},
+        cats.map(c => {
+          const pct = t.exp > 0 ? (c.value / t.exp * 100) : 0;
+          return h('div', {style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'6px'}},
+            h('div', {style:{width:'28px',fontSize:'11px',color:'var(--text3)',textAlign:'right',flexShrink:0}}, Math.round(pct)+'%'),
+            h('div', {style:{flex:1,height:'8px',borderRadius:'4px',background:'var(--divider)',overflow:'hidden'}},
+              h('div', {style:{height:'100%',borderRadius:'4px',background:c.color,width:pct+'%',transition:'width .3s'}}),
+            ),
+          );
+        })
+      ),
+    ) : null,
+  );
+}
+
+function renderIncome() {
+  const tot = state.data.income.reduce((s,i) => s + +i.amount, 0);
+  return h('div', {className:'page'},
+    h('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px'}},
+      h('h1', {className:'h1'}, 'Income'),
+      h('button', {className:'btn-pri', onClick:()=>setState({modal:'inc'})}, '+ Add'),
+    ),
+    h('div', {className:'card', style:{background:'linear-gradient(135deg,#34C759,#30B350)',border:'none',marginBottom:'16px'}},
+      h('div', {style:{color:'rgba(255,255,255,.75)',fontSize:'13px',fontWeight:500}}, 'Total Income'),
+      h('div', {className:'mono', style:{fontSize:'32px',fontWeight:800,color:'#fff',letterSpacing:'-1px'}}, $(tot)),
+    ),
+    state.data.income.length === 0
+      ? h('div', {className:'card', style:{color:'var(--text3)',textAlign:'center',fontSize:'14px'}}, 'Tap "+ Add" to enter your first income source')
+      : state.data.income.map(i =>
+        h('div', {className:'row'},
+          h('div', {className:'ico', style:{width:'40px',height:'40px',borderRadius:'12px',background:'#34C75918',fontSize:'18px'}}, '💰'),
+          h('div', {style:{flex:1,marginLeft:'12px'}},
+            h('div', {style:{fontSize:'15px',fontWeight:600}}, i.name),
+            h('div', {style:{fontSize:'12px',color:'var(--text3)'}}, i.cadence+(i.date?' · '+fd(i.date):'')),
+          ),
+          h('div', {className:'mono', style:{fontWeight:700,color:'var(--green)',fontSize:'16px',marginRight:'8px'}}, $$(i.amount)),
+          h('button', {className:'btn-x', innerHTML:svgX, onClick:()=>{ updateData(d=>({...d, income:d.income.filter(x=>x.id!==i.id)})); flash('Deleted'); }}),
+        )
+      ),
+  );
+}
+
+function renderBills() {
+  const filter = state._billFilter || 'all';
+  const items = state.data.expenses;
+  const list = (filter==='all'?items:filter==='unpaid'?items.filter(e=>!e.paid):items.filter(e=>e.paid))
+    .sort((a,b)=>{ if(a.paid!==b.paid) return a.paid?1:-1; return (a.dueDate||'').localeCompare(b.dueDate||''); });
+
+  return h('div', {className:'page'},
+    h('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px'}},
+      h('h1', {className:'h1'}, 'Bills & Expenses'),
+      h('button', {className:'btn-pri', onClick:()=>setState({modal:'exp'})}, '+ Add'),
+    ),
+    h('div', {style:{display:'flex',gap:'8px',marginBottom:'16px'}},
+      ['all','unpaid','paid'].map(k => {
+        const cnt = k==='all'?items.length:k==='unpaid'?items.filter(e=>!e.paid).length:items.filter(e=>e.paid).length;
+        return h('button', {className:'chip'+(filter===k?' active':''), onClick:()=>{state._billFilter=k;render();}},
+          k[0].toUpperCase()+k.slice(1)+' ('+cnt+')');
+      })
+    ),
+    list.length === 0
+      ? h('div', {className:'card', style:{color:'var(--text3)',textAlign:'center',fontSize:'14px'}}, 'No expenses here yet')
+      : list.map(e => {
+        const c = catFor(e.categoryId); const d = e.dueDate?daysUntil(e.dueDate):null;
+        return h('div', {className:'row', style:{opacity:e.paid?.5:1}},
+          h('button', {className:'chk'+(e.paid?' done':''), innerHTML:e.paid?svgChk:'', onClick:()=>{ updateData(dd=>({...dd,expenses:dd.expenses.map(x=>x.id===e.id?{...x,paid:!x.paid}:x)})); }}),
+          h('div', {className:'ico', style:{background:c.color+'18',fontSize:'16px',marginLeft:'10px'}}, c.icon),
+          h('div', {style:{flex:1,marginLeft:'10px'}},
+            h('div', {style:{fontSize:'15px',fontWeight:600,textDecoration:e.paid?'line-through':'none'}}, e.name),
+            h('div', {style:{fontSize:'12px',color:d!==null&&d<=2&&!e.paid?'var(--red)':'var(--text3)'}},
+              c.name+(e.dueDate?' · '+fd(e.dueDate):'')+(d!==null&&!e.paid?(d<0?' · Overdue':d===0?' · Today':' · '+d+'d'):'')+(e.recurring?' · recurring':'')),
+          ),
+          h('div', {className:'mono', style:{fontWeight:700,color:e.paid?'var(--text3)':'var(--text)',fontSize:'15px',marginRight:'8px'}}, $$(e.amount)),
+          h('button', {className:'btn-x', innerHTML:svgX, onClick:()=>{ updateData(d=>({...d,expenses:d.expenses.filter(x=>x.id!==e.id)})); flash('Deleted'); }}),
+        );
+      }),
+  );
+}
+
+function renderBudget() {
+  const t = totals();
+  const totBudg = state.data.envelopes.reduce((s,e) => s + +e.budgeted, 0);
+  const unbudg = t.inc - totBudg;
+
+  return h('div', {className:'page'},
+    h('h1', {className:'h1'}, 'Budget'),
+    h('div', {className:'card', style:{background:'linear-gradient(135deg,#3478F6,#2C6BD4)',border:'none',marginBottom:'16px'}},
+      h('div', {style:{display:'flex',justifyContent:'space-between'}},
+        h('div', null, h('div',{style:{color:'rgba(255,255,255,.65)',fontSize:'11px',fontWeight:500}},'Income'), h('div',{className:'mono',style:{color:'#fff',fontWeight:700}},$(t.inc))),
+        h('div', {style:{textAlign:'center'}}, h('div',{style:{color:'rgba(255,255,255,.65)',fontSize:'11px',fontWeight:500}},'Budgeted'), h('div',{className:'mono',style:{color:'#fff',fontWeight:700}},$(totBudg))),
+        h('div', {style:{textAlign:'right'}}, h('div',{style:{color:'rgba(255,255,255,.65)',fontSize:'11px',fontWeight:500}},'Left to assign'), h('div',{className:'mono',style:{color:unbudg>=0?'#A5F3C4':'#FCA5A5',fontWeight:700}},$(unbudg))),
+      ),
+      t.inc>0 ? h('div',{style:{marginTop:'12px',height:'5px',borderRadius:'3px',background:'rgba(255,255,255,.2)',overflow:'hidden'}},
+        h('div',{style:{height:'100%',borderRadius:'3px',background:'#fff',width:Math.min(100,totBudg/t.inc*100)+'%',transition:'width .4s'}})) : null,
+    ),
+    CATEGORIES.map(cat => {
+      const env = state.data.envelopes.find(e=>e.categoryId===cat.id) || {budgeted:0};
+      const spent = state.data.expenses.filter(e=>e.categoryId===cat.id).reduce((s,e)=>s+ +e.amount,0);
+      const left = env.budgeted - spent;
+      const pct = env.budgeted>0 ? Math.min(100,spent/env.budgeted*100) : 0;
+      return h('div', {className:'card'},
+        h('div', {style:{display:'flex',alignItems:'center',marginBottom:'10px'}},
+          h('div', {className:'ico', style:{background:cat.color+'18'}}, cat.icon),
+          h('div', {style:{flex:1,marginLeft:'10px'}},
+            h('div', {style:{fontWeight:600,fontSize:'15px'}}, cat.name),
+            h('div', {style:{fontSize:'12px',color:'var(--text3)'}}, $$(spent)+' of '+$$(env.budgeted)+' spent'),
+          ),
+          h('div', {style:{textAlign:'right'}},
+            h('div', {className:'mono', style:{fontSize:'15px',fontWeight:700,color:left>=0?'var(--green)':'var(--red)'}}, $$(left)),
+            h('div', {style:{fontSize:'11px',color:'var(--text3)'}}, 'remaining'),
+          ),
+        ),
+        h('div', {style:{display:'flex',alignItems:'center',gap:'10px'}},
+          h('div', {className:'bar', style:{flex:1}},
+            h('div', {className:'bar-fill', style:{width:pct+'%', background:pct>100?'var(--red)':cat.color}})),
+          h('span', {style:{fontSize:'13px',color:'var(--text3)'}}, '$'),
+          h('input', {className:'env-input', type:'number', inputMode:'numeric', value:env.budgeted||'', placeholder:'0',
+            onInput: (e) => { updateData(d=>({...d, envelopes:d.envelopes.map(x=>x.categoryId===cat.id?{...x,budgeted:+e.target.value||0}:x)})); }
+          }),
+        ),
+      );
+    }),
+  );
+}
+
+function renderMore() {
+  return h('div', {className:'page'},
+    h('h1', {className:'h1'}, 'More'),
+    h('div', {className:'card'},
+      h('span', {className:'sec-lbl'}, 'Data'),
+      [
+        {icon:'📤',label:'Export Data (JSON)',fn:exportJSON},
+        {icon:'📥',label:'Import Data (JSON)',fn:importJSON},
+        {icon:'📋',label:'Copy Due Dates for OpenClaw',fn:copyDue},
+      ].map(a => h('button', {className:'sett-row', onClick:a.fn},
+        h('span',null,a.icon), h('span',{style:{flex:1,textAlign:'left'}},a.label), h('span',{innerHTML:svgChev}))),
+      h('button', {className:'sett-row', style:{color:'var(--red)'}, onClick:()=>{
+        if(confirm('Erase everything?')){ updateData(()=>({...INIT_DATA})); flash('Cleared'); }
+      }}, h('span',null,'🗑️'), h('span',{style:{flex:1,textAlign:'left'}},'Clear All Data')),
+    ),
+    h('div', {className:'card'},
+      h('span', {className:'sec-lbl'}, 'Account'),
+      h('p', {style:{color:'var(--text3)',fontSize:'13px',margin:'8px 0'}}, state.auth?.user?.email || ''),
+      h('button', {className:'sett-row', style:{color:'var(--red)',borderBottom:'none'}, onClick:async()=>{await sb.auth.signOut();}},
+        h('span',null,'🚪'), h('span',{style:{flex:1,textAlign:'left'}},'Sign Out')),
+    ),
+    h('div', {className:'card'},
+      h('span', {className:'sec-lbl'}, 'About'),
+      h('p', {style:{color:'var(--text3)',fontSize:'13px',lineHeight:1.6,margin:'8px 0'}}, 'MoneyBuckets Lite — syncs across all your devices via Supabase.'),
+      h('p', {style:{color:'var(--text4)',fontSize:'11px',lineHeight:1.5}}, 'For personal tracking only. Not financial advice.'),
+    ),
+  );
+}
+
+function renderModal() {
+  if (!state.modal) return null;
+  const isInc = state.modal === 'inc';
+  const fields = {};
+
+  const overlay = h('div', {className:'overlay', onClick:()=>setState({modal:null})});
+  const modal = h('div', {className:'modal', onClick:(e)=>e.stopPropagation()},
+    h('div', {className:'modal-handle'}),
+    h('h2', {className:'modal-title'}, isInc ? 'Add Income' : 'Add Expense'),
+
+    h('label', {className:'form-label', style:{marginTop:0}}, isInc ? 'Source' : 'Name'),
+    h('input', {className:'form-input', placeholder:isInc?'e.g. Pharmacy salary':'e.g. Electric bill', autoFocus:true, onInput:(e)=>{fields.name=e.target.value}}),
+
+    h('label', {className:'form-label'}, 'Amount'),
+    h('input', {className:'form-input', type:'number', inputMode:'decimal', placeholder:'0.00', onInput:(e)=>{fields.amount=e.target.value}}),
+
+    !isInc ? [
+      h('label', {className:'form-label'}, 'Category'),
+      (() => {
+        const sel = h('select', {className:'form-input', onInput:(e)=>{fields.categoryId=e.target.value}});
+        CATEGORIES.forEach(c => { const opt = h('option', {value:c.id}, c.icon+' '+c.name); sel.appendChild(opt); });
+        fields.categoryId = CATEGORIES[0].id;
+        return sel;
+      })(),
+    ] : null,
+
+    h('label', {className:'form-label'}, isInc ? 'Pay Date' : 'Due Date'),
+    h('input', {className:'form-input', type:'date', value:iso(), onInput:(e)=>{fields.date=e.target.value}}),
+    fields.date = iso(),
+
+    isInc ? [
+      h('label', {className:'form-label'}, 'Cadence'),
+      (() => {
+        const sel = h('select', {className:'form-input', onInput:(e)=>{fields.cadence=e.target.value}});
+        ['Weekly','Biweekly','Semi-monthly','Monthly','One-time'].forEach(c => sel.appendChild(h('option', null, c)));
+        fields.cadence = 'Biweekly';
+        return sel;
+      })(),
+    ] : [
+      h('label', {style:{display:'flex',alignItems:'center',gap:'8px',marginTop:'14px',fontSize:'14px',color:'var(--text2)',fontWeight:500}},
+        (() => { const cb = h('input', {type:'checkbox', style:{width:'20px',height:'20px',accentColor:'var(--blue)'}, onChange:(e)=>{fields.recurring=e.target.checked}}); return cb; })(),
+        'Recurring monthly'
+      ),
+    ],
+
+    h('div', {style:{display:'flex',gap:'10px',marginTop:'20px'}},
+      h('button', {className:'btn-sec-lg', onClick:()=>setState({modal:null})}, 'Cancel'),
+      h('button', {className:'btn-pri-lg', onClick:()=>{
+        const name = (fields.name||'').trim();
+        const amount = +fields.amount;
+        if (!name || !amount) return;
+        if (isInc) {
+          updateData(d=>({...d, income:[...d.income, {id:uid(),name,amount,cadence:fields.cadence||'Biweekly',date:fields.date}]}));
+        } else {
+          updateData(d=>({...d, expenses:[...d.expenses, {id:uid(),name,amount,categoryId:fields.categoryId||CATEGORIES[0].id,dueDate:fields.date,recurring:!!fields.recurring,paid:false}]}));
+        }
+        flash((isInc?'Income':'Expense')+' added');
+        setState({modal:null});
+      }}, isInc ? 'Add Income' : 'Add Expense'),
+    ),
+  );
+
+  overlay.appendChild(modal);
+  return overlay;
+}
+
+// ─── Actions ───
+function copyDue() {
+  const lines = state.data.expenses.filter(e=>!e.paid&&e.dueDate).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))
+    .map(e=>`${fd(e.dueDate)} — ${e.name}: ${$$(e.amount)}`);
+  navigator.clipboard?.writeText('📅 Due Dates\n\n'+(lines.length?lines.join('\n'):'All clear!'));
+  flash('Copied for OpenClaw');
+}
+
+function exportJSON() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(state.data,null,2)],{type:'application/json'}));
+  a.download = `moneybuckets-${iso()}.json`; a.click(); flash('Exported');
+}
+
+function importJSON() {
+  const inp = document.createElement('input'); inp.type='file'; inp.accept='.json';
+  inp.onchange = e => { const f=e.target.files[0]; if(!f) return; const r=new FileReader();
+    r.onload = ev => { try { updateData(()=>({...INIT_DATA,...JSON.parse(ev.target.result)})); flash('Imported'); } catch { flash('Invalid file'); } };
+    r.readAsText(f); }; inp.click();
+}
+
+// ─── Main render ───
+function render() {
+  if (state.auth === null) {
+    app.innerHTML = '<div class="auth-wrap"><div class="spinner"></div></div>';
+    return;
+  }
+  if (state.auth === 'login') {
+    renderAuth();
+    return;
+  }
+
+  app.innerHTML = '';
+
+  const body = h('div', {className:'body'});
+  switch (state.tab) {
+    case 'home': body.appendChild(renderHome()); break;
+    case 'income': body.appendChild(renderIncome()); break;
+    case 'bills': body.appendChild(renderBills()); break;
+    case 'budget': body.appendChild(renderBudget()); break;
+    case 'more': body.appendChild(renderMore()); break;
+  }
+  app.appendChild(body);
+
+  // Nav
+  const nav = h('nav', {className:'nav'});
+  ['home','income','bills','budget','more'].forEach(id => {
+    const label = id==='home'?'Home':id==='income'?'Income':id==='bills'?'Bills':id==='budget'?'Budget':'More';
+    const btn = h('button', {className:state.tab===id?'active':'', onClick:()=>setState({tab:id})});
+    btn.innerHTML = NAV_ICONS[id];
+    btn.appendChild(h('span', null, label));
+    nav.appendChild(btn);
+  });
+  app.appendChild(nav);
+
+  // Modal
+  const modal = renderModal();
+  if (modal) app.appendChild(modal);
+
+  // Toast
+  if (state.toast) app.appendChild(h('div', {className:'toast'}, state.toast));
+}
+
+// ─── Init ───
+checkAuth();
+</script>
+</body>
+</html>
