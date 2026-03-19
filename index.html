@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 
 <html lang="en">
 <head>
@@ -296,7 +296,7 @@ function byCategory() {
 // ─── Page Renderers ───
 function renderAuth() {
   let email = '';
-  let sent = false;
+  let password = '';
   let loading = false;
   let error = '';
 
@@ -308,38 +308,36 @@ function renderAuth() {
           h('div', {style:{fontSize:'40px',marginBottom:'12px'}}, '💰'),
           h('h1', {style:{fontSize:'24px',fontWeight:800,marginBottom:'4px'}}, 'MoneyBuckets'),
           h('p', {style:{color:'#8E8E93',fontSize:'14px',marginBottom:'24px'}}, 'Sign in to sync across devices'),
-          sent
-            ? [
-                h('div', {style:{fontSize:'40px',marginBottom:'12px'}}, '📬'),
-                h('p', {style:{color:'var(--text)',fontSize:'15px',fontWeight:600,marginBottom:'8px'}}, 'Check your email'),
-                h('p', {style:{color:'#8E8E93',fontSize:'13px',lineHeight:'1.5'}}, `We sent a magic link to ${email}. Click it to sign in.`),
-                h('button', {className:'btn-link', style:{marginTop:'16px'}, onClick:()=>{ sent=false; draw(); }}, 'Use a different email'),
-              ]
-            : [
-                h('label', {className:'form-label',style:{textAlign:'left',marginTop:0}}, 'Email'),
-                h('input', {className:'form-input', type:'email', placeholder:'you@example.com', value:email, onInput:(e)=>{email=e.target.value}, autoFocus:true}),
-                error ? h('p', {style:{color:'var(--red)',fontSize:'13px',marginTop:'8px'}}, error) : null,
-                h('button', {
-                  className:'btn-pri-lg',
-                  style:{width:'100%',marginTop:'16px',opacity:loading?.6:1},
-                  disabled:loading,
-                  onClick: async () => {
-                    if (!email.trim() || !email.includes('@')) { error='Enter a valid email'; draw(); return; }
-                    loading = true; error = ''; draw();
-                    const { error: err } = await sb.auth.signInWithOtp({
-                      email: email.trim(),
-                      options: { emailRedirectTo: window.location.origin + window.location.pathname }
-                    });
-                    loading = false;
-                    if (err) { error = err.message; draw(); }
-                    else { sent = true; draw(); }
-                  }
-                }, loading ? 'Sending...' : 'Send Magic Link'),
-              ]
+          h('label', {className:'form-label',style:{textAlign:'left',marginTop:0}}, 'Email'),
+          h('input', {className:'form-input', type:'email', placeholder:'you@example.com', value:email, onInput:(e)=>{email=e.target.value}, autoFocus:true}),
+          h('label', {className:'form-label',style:{textAlign:'left'}}, 'Password'),
+          h('input', {className:'form-input', type:'password', placeholder:'••••••••', value:password, onInput:(e)=>{password=e.target.value}, onKeydown:(e)=>{
+            if(e.key==='Enter' && email.trim() && password) doLogin();
+          }}),
+          error ? h('p', {style:{color:'var(--red)',fontSize:'13px',marginTop:'8px'}}, error) : null,
+          h('button', {
+            className:'btn-pri-lg',
+            style:{width:'100%',marginTop:'16px',opacity:loading?.6:1},
+            disabled:loading,
+            onClick: doLogin
+          }, loading ? 'Signing in...' : 'Sign In'),
         )
       )
     );
   }
+
+  async function doLogin() {
+    if (!email.trim() || !email.includes('@')) { error='Enter a valid email'; draw(); return; }
+    if (!password || password.length < 6) { error='Password must be at least 6 characters'; draw(); return; }
+    loading = true; error = ''; draw();
+    const { error: err } = await sb.auth.signInWithPassword({
+      email: email.trim(),
+      password: password,
+    });
+    loading = false;
+    if (err) { error = err.message; draw(); }
+  }
+
   draw();
 }
 
