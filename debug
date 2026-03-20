@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MoneyBuckets - Debug</title>
+<style>
+body{font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:20px;background:#F2F2F7}
+.log{background:#fff;border-radius:12px;padding:12px;margin:8px 0;font-size:13px;border:1px solid #E5E5EA}
+.ok{border-left:4px solid #34C759}
+.err{border-left:4px solid #FF3B30;color:#FF3B30}
+.warn{border-left:4px solid #FF9500}
+h1{font-size:20px}
+</style>
+</head>
+<body>
+<h1>MoneyBuckets Debug</h1>
+<div id="log"></div>
+
+<script>
+var log = document.getElementById('log');
+function msg(text, type) {
+  var d = document.createElement('div');
+  d.className = 'log ' + (type || 'ok');
+  d.textContent = text;
+  log.appendChild(d);
+}
+
+// Step 1: Basic JS works
+msg('1. JavaScript is running');
+
+// Step 2: Check Supabase CDN
+msg('2. Loading Supabase library...');
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+  onload="supabaseLoaded()" onerror="supabaseFailed()"></script>
+
+<script>
+function supabaseFailed() {
+  msg('2. FAILED to load Supabase from CDN', 'err');
+  msg('This means the CDN is blocked. Try a different CDN or bundle it.', 'warn');
+}
+
+function supabaseLoaded() {
+  msg('2. Supabase library loaded OK');
+
+  // Step 3: Create client
+  try {
+    var sb = window.supabase.createClient(
+      'https://snxgrdzpwxpkchepxohz.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNueGdyZHpwd3hwa2NoZXB4b2h6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MzQ3ODMsImV4cCI6MjA4OTUxMDc4M30.WzRsTXmlu67JcAjxAIEp44TKLfWM_aDHVlcxVhHP4Bs'
+    );
+    msg('3. Supabase client created OK');
+
+    // Step 4: Check session
+    sb.auth.getSession().then(function(result) {
+      if (result.error) {
+        msg('4. getSession error: ' + result.error.message, 'err');
+      } else if (result.data.session) {
+        msg('4. Active session found for: ' + result.data.session.user.email);
+
+        // Step 5: Try loading data
+        sb.from('budget_data').select('data').eq('user_id', result.data.session.user.id).maybeSingle()
+          .then(function(r) {
+            if (r.error) {
+              msg('5. Data load error: ' + r.error.message, 'err');
+              msg('Did you run the SQL setup script? The budget_data table might not exist.', 'warn');
+            } else if (r.data) {
+              msg('5. Data loaded OK: ' + JSON.stringify(r.data.data).substring(0, 200) + '...');
+            } else {
+              msg('5. No data saved yet (first time). This is fine.');
+            }
+            msg('ALL CHECKS PASSED. The full app should work.', 'ok');
+          });
+      } else {
+        msg('4. No session (not logged in). Login screen should show.');
+        msg('ALL CHECKS PASSED. The full app should work.', 'ok');
+      }
+    }).catch(function(e) {
+      msg('4. getSession crashed: ' + e.message, 'err');
+    });
+
+  } catch(e) {
+    msg('3. createClient FAILED: ' + e.message, 'err');
+  }
+}
+
+// Catch any uncaught errors
+window.onerror = function(message, source, line, col, error) {
+  msg('UNCAUGHT ERROR: ' + message + ' (line ' + line + ')', 'err');
+};
+</script>
+
+</body>
+</html>
