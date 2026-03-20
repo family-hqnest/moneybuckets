@@ -118,8 +118,11 @@ const INIT={bills:[],income:[],months:{},setupDone:false};
 
 function getMonth(data,key){
 if(!key)key=ym();
+if(!data.months)data.months={};
 if(!data.months[key])data.months[key]={overrides:{},assigned:{},paid:{}};
-return data.months[key];
+const m=data.months[key];
+if(!m.overrides)m.overrides={};if(!m.assigned)m.assigned={};if(!m.paid)m.paid={};
+return m;
 }
 function billAmt(data,bill,monthKey){
 const m=data.months[monthKey||ym()];
@@ -139,7 +142,7 @@ function upd(fn){D.data=fn(D.data);render();debouncedSave();}
 let _st;
 async function cloudSave(){if(!sb||!D.auth?.user)return;D.syncing=true;render();try{await sb.from(‘budget_data’).upsert({user_id:D.auth.user.id,data:D.data},{onConflict:‘user_id’});}catch(e){console.error(e);}D.syncing=false;render();}
 function debouncedSave(){clearTimeout(_st);_st=setTimeout(cloudSave,800);}
-async function cloudLoad(){if(!sb||!D.auth?.user)return;try{const{data}=await sb.from(‘budget_data’).select(‘data’).eq(‘user_id’,D.auth.user.id).maybeSingle();if(data?.data)D.data={…INIT,…data.data};}catch(e){console.error(e);}render();}
+async function cloudLoad(){if(!sb||!D.auth?.user)return;try{const{data}=await sb.from(‘budget_data’).select(‘data’).eq(‘user_id’,D.auth.user.id).maybeSingle();if(data?.data){let loaded={…INIT,…data.data};if(!loaded.bills)loaded.bills=[];if(!loaded.months)loaded.months={};if(!loaded.income)loaded.income=[];if(loaded.setupDone&&loaded.bills.length===0&&(data.data.expenses?.length>0||false)){loaded.setupDone=false;}D.data=loaded;}}catch(e){console.error(e);}render();}
 async function checkAuth(){if(!sb){D.auth=‘login’;render();return;}try{const{data:{session}}=await sb.auth.getSession();if(session?.user){D.auth={user:session.user};await cloudLoad();}else D.auth=‘login’;}catch{D.auth=‘login’;}render();}
 if(sb)sb.auth.onAuthStateChange(async(ev,sess)=>{if(sess?.user){D.auth={user:sess.user};await cloudLoad();render();}else if(ev===‘SIGNED_OUT’){D.auth=‘login’;D.data={…INIT};render();}});
 
@@ -530,6 +533,7 @@ mo.appendChild(btns);ov.appendChild(mo);return ov;
 
 // ═══ RENDER ═══
 function render(){
+try{
 if(D.auth===null){app.innerHTML=’<div class="aw"><div class="sp"></div></div>’;return;}
 if(D.auth===‘login’){renderAuth();return;}
 if(!D.data.setupDone){renderSetup();return;}
@@ -554,6 +558,7 @@ app.appendChild(nav);
 
 const modal=renderModal();if(modal)app.appendChild(modal);
 if(D.toast)app.appendChild(h(‘div’,{className:‘to’},D.toast));
+}catch(e){console.error(‘Render error:’,e);app.innerHTML=’<div class="aw"><div class="ac"><p style="color:var(--red);font-weight:700">Something broke</p><p style="color:var(--tx3);font-size:13px;margin-top:8px">’+e.message+’</p><button onclick="D.data.setupDone=false;render();" style="margin-top:16px;padding:10px 20px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-weight:700;cursor:pointer">Reset & Retry</button></div></div>’;}
 }
 
 checkAuth();
